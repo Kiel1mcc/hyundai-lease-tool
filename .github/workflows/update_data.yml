@@ -14,7 +14,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
       with:
-        fetch-depth: 0  # Force a full checkout to avoid caching issues
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -31,14 +31,18 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y openjdk-11-jre
 
-    - name: Convert PDF to CSV
+    - name: Convert PDF to Lease CSV
       run: python convert_pdf_to_csv.py
 
-    - name: List directory contents
-      run: ls -R
-
-    - name: Update Inventory
+    - name: Update Inventory from Excel
       run: python update_inventory.py
+
+    - name: Display CSV Outputs (for debug)
+      run: |
+        echo "------ Combined_Lease_Programs.csv ------"
+        head -n 20 Combined_Lease_Programs.csv || echo "File not found"
+        echo "------ Drivepath_Dealer_Inventory.csv ------"
+        head -n 20 Drivepath_Dealer_Inventory.csv || echo "File not found"
 
     - name: Commit updated CSVs
       run: |
@@ -48,6 +52,6 @@ jobs:
         git commit -m "Update lease programs and inventory CSVs" || echo "No changes to commit"
         git push
 
-    - name: Clean up
+    - name: Clean up raw uploads
       run: |
         rm -f new_lease_programs.pdf Inventory_Detail_20250527.xlsx
