@@ -1,57 +1,36 @@
-name: Update Lease Programs and Inventory
+import pandas as pd
+import os
 
-on:
-  push:
-    paths:
-      - 'new_lease_programs.pdf'
-      - 'Inventory_Detail_20250527.xlsx'
+def update_inventory(excel_path, output_csv_path):
+    # Check if the Excel file exists
+    if not os.path.exists(excel_path):
+        print(f"Excel file {excel_path} not found. Skipping inventory update.")
+        return
 
-jobs:
-  update-data:
-    runs-on: ubuntu-latest
+    # Read the Excel file
+    df = pd.read_excel(excel_path, engine="openpyxl", dtype=str)
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
+    # Filter for "DS - Dealer Stock"
+    df = df[df["Vehicle Status"] == "DS - Dealer Stock"]
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
+    # Select and rename columns to match Drivepath_Dealer_Inventory.csv
+    df = df[["AON or VIN", "Model", "Description", "MSRP", "Model Number", "MY"]]
+    df = df.rename(columns={
+        "AON or VIN": "VIN",
+        "Model": "MODEL",
+        "Description": "TRIM",
+        "Model Number": "MODEL NUMBER",
+        "MY": "YEAR"
+    })
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+    # Clean MSRP: Remove commas, ensure it starts with $
+    df["MSRP"] = df["MSRP"].apply(lambda x: f"${x.replace(',', '').split('.')[0]}" if pd.notna(x) else "$0")
 
-    - name: Install Java (required for tabula-py)
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y openjdk-11-jre
+    # Save to CSV
+    df.to_csv(output_csv_path, index=False)
+    print(f"Updated inventory and saved as {output_csv_path}")
 
-    - name: Convert PDF to Lease CSV
-      run: python convert_pdf_to_csv.py
-
-    - name: Update Inventory
-      run: python ./update_inventory.py
-
-    - name: Display CSV Outputs (for debug)
-      run: |
-        echo "------ Combined_Lease_Programs.csv ------"
-        head -n 20 Combined_Lease_Programs.csv || echo "File not found"
-        echo "------ Drivepath_Dealer_Inventory.csv ------"
-        head -n 20 Drivepath_Dealer_Inventory.csv || echo "File not found"
-
-    - name: Commit updated CSVs
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add Combined_Lease_Programs.csv Drivepath_Dealer_Inventory.csv
-        git commit -m "Update lease programs and inventory CSVs" || echo "No changes to commit"
-        git push
-
-    - name: Clean up raw uploads
-      run: |
-        rm -f new_lease_programs.pdf Inventory_Detail_20250527.xlsx
+if __name__ == "__main__":
+    excel_path = "Inventory_Detail_20250527.xlsx"
+    output_csv_path = "Drivepath_Dealer_Inventory.csv"
+    update_inventory(excel_path, output_csv_path)
