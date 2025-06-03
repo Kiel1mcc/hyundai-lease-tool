@@ -4,7 +4,7 @@ import pandas as pd
 # Load your prepared inventory and lease program data
 @st.cache_data
 def load_data():
-    inventory = pd.read_excel("Inventory_Detail_20250527.xlsx", engine="openpyxl", dtype=str)
+    inventory = pd.read_csv("Drivepath_Dealer_Inventory.csv", dtype=str)
     lease_programs = pd.read_csv("Combined_Lease_Programs.csv")
     return inventory, lease_programs
 
