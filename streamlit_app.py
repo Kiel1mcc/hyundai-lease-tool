@@ -25,7 +25,7 @@ st.title("Hyundai Lease Quote Tool")
 vin_input = st.text_input("Enter VIN to get lease options")
 
 if vin_input:
-    vehicle_row = inventory_df[inventory_df["VIN"] == vin_input]
+    vehicle_row = inventory_df[inventory_df["VIN"].str.strip() == vin_input.strip()]
 
     if not vehicle_row.empty:
         # Extract vehicle info
@@ -33,7 +33,7 @@ if vin_input:
         model = vehicle_row["Model"].values[0]
         trim = vehicle_row["Trim"].values[0]
         model_number = vehicle_row["Model Number"].values[0]
-        year = vehicle_row["Year"].values[0]
+        year = vehicle_row["Model Year"].values[0]
 
         st.subheader(f"{year} {model} {trim}")
         selling_price = st.number_input("Selling Price", value=msrp, step=100.0)
