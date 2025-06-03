@@ -1,30 +1,36 @@
 import pandas as pd
+   import os
 
-def update_inventory(excel_path, output_csv_path):
-    # Read the Excel file
-    df = pd.read_excel(excel_path, engine="openpyxl", dtype=str)
+   def update_inventory(excel_path, output_csv_path):
+       # Check if the Excel file exists
+       if not os.path.exists(excel_path):
+           print(f"Excel file {excel_path} not found. Skipping inventory update.")
+           return
 
-    # Filter for "DS - Dealer Stock"
-    df = df[df["Vehicle Status"] == "DS - Dealer Stock"]
+       # Read the Excel file
+       df = pd.read_excel(excel_path, engine="openpyxl", dtype=str)
 
-    # Select and rename columns to match Drivepath_Dealer_Inventory.csv
-    df = df[["AON or VIN", "Model", "Description", "MSRP", "Model Number", "MY"]]
-    df = df.rename(columns={
-        "AON or VIN": "VIN",
-        "Model": "MODEL",
-        "Description": "TRIM",
-        "Model Number": "MODEL NUMBER",
-        "MY": "YEAR"
-    })
+       # Filter for "DS - Dealer Stock"
+       df = df[df["Vehicle Status"] == "DS - Dealer Stock"]
 
-    # Clean MSRP: Remove commas, ensure it starts with $
-    df["MSRP"] = df["MSRP"].apply(lambda x: f"${x.replace(',', '').split('.')[0]}" if x and x != "nan" else "$0")
+       # Select and rename columns to match Drivepath_Dealer_Inventory.csv
+       df = df[["AON or VIN", "Model", "Description", "MSRP", "Model Number", "MY"]]
+       df = df.rename(columns={
+           "AON or VIN": "VIN",
+           "Model": "MODEL",
+           "Description": "TRIM",
+           "Model Number": "MODEL NUMBER",
+           "MY": "YEAR"
+       })
 
-    # Save to CSV
-    df.to_csv(output_csv_path, index=False)
-    print(f"Updated inventory and saved as {output_csv_path}")
+       # Clean MSRP: Remove commas, ensure it starts with $
+       df["MSRP"] = df["MSRP"].apply(lambda x: f"${x.replace(',', '').split('.')[0]}" if x and x != "nan" else "$0")
 
-if __name__ == "__main__":
-    excel_path = "Inventory_Detail_20250527.xlsx"
-    output_csv_path = "Drivepath_Dealer_Inventory.csv"
-    update_inventory(excel_path, output_csv_path)
+       # Save to CSV
+       df.to_csv(output_csv_path, index=False)
+       print(f"Updated inventory and saved as {output_csv_path}")
+
+   if __name__ == "__main__":
+       excel_path = "Inventory_Detail_20250527.xlsx"
+       output_csv_path = "Drivepath_Dealer_Inventory.csv"
+       update_inventory(excel_path, output_csv_path)
