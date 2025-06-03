@@ -13,6 +13,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Force a full checkout to avoid caching issues
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -32,6 +34,9 @@ jobs:
     - name: Convert PDF to CSV
       run: python convert_pdf_to_csv.py
 
+    - name: List directory contents
+      run: ls -R
+
     - name: Update Inventory
       run: python update_inventory.py
 
@@ -46,13 +51,3 @@ jobs:
     - name: Clean up
       run: |
         rm -f new_lease_programs.pdf Inventory_Detail_20250527.xlsx
-        - name: Checkout repository
-  uses: actions/checkout@v3
-  with:
-    fetch-depth: 0  # Force a full checkout to avoid caching issues
-
-    - name: List directory contents
-      run: ls -R
-
-    - name: Update Inventory
-      run: python update_inventory.py
