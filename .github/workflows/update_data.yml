@@ -34,8 +34,8 @@ jobs:
     - name: Convert PDF to Lease CSV
       run: python convert_pdf_to_csv.py
 
-    - name: Update Inventory from Excel
-      run: python update_inventory.py
+    - name: Update Inventory
+      run: python ./update_inventory.py
 
     - name: Display CSV Outputs (for debug)
       run: |
