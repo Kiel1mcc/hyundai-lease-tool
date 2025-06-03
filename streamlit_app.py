@@ -5,7 +5,7 @@ import pandas as pd
 @st.cache_data
 def load_data():
     inventory = pd.read_excel("Inventory_Detail_20250527.xlsx", engine="openpyxl", dtype=str)
-    lease_programs = pd.read_excel("H202_BulletinCE.xlsx", sheet_name=None)
+    lease_programs = pd.read_csv("Combined_Lease_Programs.csv")
     return inventory, lease_programs
 
 inventory_df, lease_sheets = load_data()
