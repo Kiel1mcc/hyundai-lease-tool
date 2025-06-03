@@ -1,4 +1,4 @@
-import pandas as pd
+import pandas as pd 
    import os
 
    def update_inventory(excel_path, output_csv_path):
