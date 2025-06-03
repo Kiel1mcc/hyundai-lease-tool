@@ -4,7 +4,7 @@ import pandas as pd
 # Load your prepared inventory and lease program data
 @st.cache_data
 def load_data():
-    inventory = pd.read_excel("Inventory_Detail_20250527.xlsx")
+    inventory = pd.read_excel("Inventory_Detail_20250527.xlsx", engine="openpyxl", dtype=str)
     lease_programs = pd.read_excel("H202_BulletinCE.xlsx", sheet_name=None)
     return inventory, lease_programs
 
