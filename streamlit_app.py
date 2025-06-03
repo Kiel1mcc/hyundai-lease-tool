@@ -1,73 +1,82 @@
-
 import streamlit as st
 import pandas as pd
 
+# Load your prepared inventory and lease program data
 @st.cache_data
 def load_data():
-    dealer_stock = pd.read_csv("Drivepath_Dealer_Inventory.csv")
-    lease_programs = pd.read_csv("Combined_Lease_Programs.csv")
-    county_tax = pd.read_csv("ohio_county_tax_reference.csv")
-    return dealer_stock, lease_programs, county_tax
+    inventory = pd.read_excel("Inventory_Detail_20250527.xlsx")
+    lease_programs = pd.read_excel("H202_BulletinCE.xlsx", sheet_name=None)
+    return inventory, lease_programs
 
-def main():
-    st.title("Hyundai Lease Quote Tool")
+inventory_df, lease_sheets = load_data()
 
-    dealer_stock, lease_data, county_tax = load_data()
+# Utility to find the sheet containing the model number
+def find_lease_terms_by_model(model_number):
+    for sheet in lease_sheets.values():
+        match = sheet[sheet.iloc[:, 1].astype(str).str.strip() == model_number]
+        if not match.empty:
+            return match
+    return pd.DataFrame()
 
-    vin_input = st.text_input("Enter VIN")
-    matched = dealer_stock[dealer_stock["VIN"] == vin_input.strip()]
+# UI layout
+st.title("Hyundai Lease Quote Tool")
 
-    if matched.empty:
-        st.warning("VIN not in dealer stock.")
-        return
+# VIN input
+vin_input = st.text_input("Enter VIN to get lease options")
 
-    msrp = matched["MSRP"].values[0]
-    model_number = matched["Model Number"].values[0]
+if vin_input:
+    vehicle_row = inventory_df[inventory_df["VIN"] == vin_input]
 
-    st.success(f"Model Number: {model_number}")
-    st.write(f"**MSRP:** ${msrp:,.2f}")
+    if not vehicle_row.empty:
+        # Extract vehicle info
+        msrp = float(vehicle_row["MSRP"].values[0])
+        model = vehicle_row["Model"].values[0]
+        trim = vehicle_row["Trim"].values[0]
+        model_number = vehicle_row["Model Number"].values[0]
+        year = vehicle_row["Year"].values[0]
 
-    selling_price = st.number_input("Selling Price", value=float(msrp), step=100.0)
-    credit_tier = st.selectbox("Estimated Credit Score / Tier", ["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5"])
-    tier_map = {"Tier 1": 1, "Tier 2": 2, "Tier 3": 3, "Tier 4": 4, "Tier 5": 5}
-    selected_tier = tier_map[credit_tier]
+        st.subheader(f"{year} {model} {trim}")
+        selling_price = st.number_input("Selling Price", value=msrp, step=100.0)
+        credit_score = st.selectbox("Estimated Credit Score", ["720+", "680–719", "640–679", "600–639", "<600"])
+        county = st.selectbox("Customer County", ["Franklin", "Cuyahoga", "Delaware", "Hamilton", "Montgomery", "Lucas", "Other"])
 
-    county = st.selectbox("Customer County", sorted(county_tax["County"]))
-    tax_rate = float(county_tax[county_tax["County"] == county]["Tax Rate"].values[0])
+        lease_data = find_lease_terms_by_model(model_number)
 
-    offers = lease_data[lease_data["Model Number"] == model_number]
-    offers = offers[offers["Tier"] == selected_tier]
+        if not lease_data.empty:
+            st.markdown("### Lease Options")
+            for _, row in lease_data.iterrows():
+                term = int(row["Term"])
+                mileage = int(row["Mileage"])
+                residual_pct = float(row["Residual"])
+                money_factor = float(row["MF"])
+                lease_cash = float(row["Lease Cash"])
 
-    if offers.empty:
-        st.warning("No lease programs found for this model and tier.")
-        return
+                # Apply mileage adjustment
+                if mileage == 10000 and 33 <= term <= 48:
+                    residual_pct += 1
+                elif mileage == 15000:
+                    residual_pct -= 2
 
-    st.write("### Available Lease Scenarios")
+                # Checkboxes for toggles
+                include_rebate = st.checkbox(f"Include Lease Cash for {term}mo/{mileage:,}mi", value=False, key=f"rebate_{term}_{mileage}")
+                markup_toggle = st.checkbox(f"Include MF Markup for {term}mo/{mileage:,}mi", value=True, key=f"mf_{term}_{mileage}")
 
-    def calculate_residual(residual_pct, msrp, miles):
-        if miles == 10000 and offers["Term"].between(33, 48).any():
-            residual_pct += 0.01
-        elif miles == 15000:
-            residual_pct -= 0.02
-        return round(msrp * residual_pct, 2)
+                if markup_toggle:
+                    money_factor += 0.0004
 
-    for _, row in offers.iterrows():
-        for miles in [10000, 12000, 15000]:
-            show_rebate = st.toggle(f"Apply Rebate – ${int(row['Lease Cash'])} for {int(row['Term'])} mo / {miles:,} mi", key=f"{row['Term']}-{miles}-rebate")
-            show_markup = st.toggle("Include MF Markup (+.00040)", value=True, key=f"{row['Term']}-{miles}-markup")
+                cap_cost = selling_price - (lease_cash if include_rebate else 0)
+                residual_value = msrp * (residual_pct / 100)
+                depreciation = (cap_cost - residual_value) / term
+                finance_charge = (cap_cost + residual_value) * money_factor
+                base_payment = depreciation + finance_charge
 
-            mf_display = row["MF"] + (0.0004 if show_markup else 0)
-            rebate_used = row["Lease Cash"] if show_rebate else 0
+                # Sample tax calculation (use correct county logic later)
+                tax_rate = 0.0725
+                monthly_tax = base_payment * tax_rate
+                total_payment = base_payment + monthly_tax
 
-            residual = calculate_residual(row["Residual"], msrp, miles)
-            cap_cost = selling_price - rebate_used + 962.50
-            depreciation = cap_cost - residual
-            base_payment = depreciation / int(row["Term"])
-            rent = (cap_cost + residual) * mf_display
-            pretax = base_payment + rent
-            with_tax = pretax * (1 + tax_rate)
-
-            st.write(f"📆 **{int(row['Term'])} mo / {miles:,} mi**  — 💰 **${with_tax:.2f}**/mo")
-
-if __name__ == "__main__":
-    main()
+                st.markdown(f"**{term} months / {mileage:,} miles:** ${total_payment:,.2f}")
+        else:
+            st.warning("No lease program found for this vehicle.")
+    else:
+        st.error("VIN not found in dealer stock.")
