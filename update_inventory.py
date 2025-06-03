@@ -13,23 +13,22 @@ def update_inventory(excel_path, output_csv_path):
     # Filter for "DS - Dealer Stock"
     df = df[df["Vehicle Status"] == "DS - Dealer Stock"]
 
-    # Select and rename columns to match Drivepath_Dealer_Inventory.csv
-    df = df[["AON or VIN", "Model", "Description", "MSRP", "Model Number", "MY"]]
+    # Select and rename columns to match the CSV structure
+    df = df[["VIN", "MY", "Model", "Description", "MSRP"]]
     df = df.rename(columns={
-        "AON or VIN": "VIN",
+        "VIN": "VIN",
+        "MY": "YEAR",
         "Model": "MODEL",
         "Description": "TRIM",
-        "MSRP": "MSRP",
-        "Model Number": "MODEL NUMBER",
-        "MY": "YEAR"
+        "MSRP": "MSRP"
     })
 
-    # Clean MSRP: Remove commas, ensure it starts with $
-    df["MSRP"] = df["MSRP"].apply(lambda x: f"${x.replace(',', '').split('.')[0]}" if pd.notnull(x) else "$0")
+    # Clean MSRP formatting
+    df["MSRP"] = df["MSRP"].apply(lambda x: f"${x.replace(',', '')}" if pd.notna(x) else "$0")
 
     # Save to CSV
     df.to_csv(output_csv_path, index=False)
-    print(f"Updated inventory and saved as {output_csv_path}")
+    print(f"✅ Inventory updated and saved as {output_csv_path}")
 
 if __name__ == "__main__":
     update_inventory("Inventory_Detail_20250527.xlsx", "Drivepath_Dealer_Inventory.csv")
