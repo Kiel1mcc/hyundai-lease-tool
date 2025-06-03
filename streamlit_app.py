@@ -7,44 +7,192 @@ import os
 def load_data(file_path):
     if not os.path.exists(file_path):
         st.error(f"{file_path} not found in the app directory. Please upload it or check the path.")
-        return pd.DataFrame()  # Return empty DataFrame if file not found
+        return pd.DataFrame()
     return pd.read_csv(file_path)
+
+# Lease payment calculation function
+def calculate_lease_payment(selling_price, lease_cash, residual_value_range, lease_term, credit_tier, down_payment, tax_rate, acquisition_fee=650, money_factor_markup=0.0004, apply_markup=True):
+    # Parse residual value (money factor) range
+    if residual_value_range and isinstance(residual_value_range, str):
+        if "-" in residual_value_range:
+            low, high = map(float, residual_value_range.replace("$", "").split("-"))
+            money_factor = (low + high) / 2
+        else:
+            money_factor = float(residual_value_range.replace("$", ""))
+    else:
+        money_factor = 0.0025  # Default if not provided
+
+    # Apply money factor markup if selected
+    if apply_markup:
+        money_factor += money_factor_markup
+
+    # Assume residual percentage (since Combined_Lease_Programs.csv provides money factor instead)
+    residual_percentage = 0.55 if lease_term == 36 else 0.52
+    residual_value = selling_price * residual_percentage
+
+    # Apply lease cash (rebate) if selected
+    capitalized_cost = selling_price - (lease_cash if apply_lease_cash else 0) - down_payment
+
+    # Calculate depreciation
+    depreciation = (capitalized_cost - residual_value) / lease_term
+
+    # Calculate finance charge
+    finance_charge = (capitalized_cost + residual_value) * money_factor
+
+    # Monthly payment before tax
+    monthly_payment = depreciation + finance_charge
+
+    # Add tax on monthly payment
+    monthly_tax = monthly_payment * tax_rate
+    monthly_payment_with_tax = monthly_payment + monthly_tax
+
+    # Due at signing: First payment + acquisition fee + down payment + tax on down payment
+    due_at_signing = monthly_payment_with_tax + acquisition_fee + down_payment + (down_payment * tax_rate)
+
+    return {
+        "Lease Term (Months)": lease_term,
+        "Tier": credit_tier,
+        "Money Factor": round(money_factor, 5),
+        "Monthly Payment": round(monthly_payment_with_tax, 2),
+        "Due at Signing": round(due_at_signing, 2),
+        "Available Lease Cash": f"${lease_cash}" if lease_cash > 0 else "None"
+    }
 
 # Title of the app
 st.title("Hyundai Dealer Inventory and Lease Tool")
 
-# Load inventory data
+# Load data files
 inventory_file = "Drivepath_Dealer_Inventory.csv"
-inventory_data = load_data(inventory_file)
-
-# Load lease programs data (optional)
 lease_file = "Combined_Lease_Programs.csv"
-lease_data = load_data(lease_file)
+tax_file = "ohio_county_tax.csv"
 
-# Stop if inventory data is missing (required)
+inventory_data = load_data(inventory_file)
+lease_data = load_data(lease_file)
+tax_data = load_data(tax_file)
+
+# Stop if required data is missing
 if inventory_data.empty:
     st.write("Inventory data is required to proceed. Please upload Drivepath_Dealer_Inventory.csv.")
     st.stop()
+if tax_data.empty:
+    st.write("Ohio county tax data is required. Please upload ohio_county_tax.csv.")
+    st.stop()
 
-# Sidebar for filters on inventory
-st.sidebar.header("Inventory Filters")
+# Extract available credit tiers from lease programs
+if not lease_data.empty:
+    credit_tiers = sorted(lease_data["Tier"].dropna().unique().tolist())
+else:
+    credit_tiers = ["1 (740-999)", "2 (730-739)", "5 (660-679)"]
+    st.warning("Lease programs not found. Using default credit tiers.")
+
+# Extract Ohio counties and tax rates
+counties = tax_data["County"].tolist()
+tax_rates = dict(zip(tax_data["County"], tax_data["Tax_Rate"].astype(float) / 100))
+
+# Section for lease calculation
+st.write("### Calculate Lease Payment")
+vin_input = st.text_input("Enter VIN", placeholder="e.g., 3KMJCCDE7SE006095")
+
+if vin_input:
+    # Find the vehicle in inventory
+    vehicle = inventory_data[inventory_data["VIN"] == vin_input]
+    if vehicle.empty:
+        st.error("VIN not found in inventory. Please check the VIN and try again.")
+    else:
+        vehicle = vehicle.iloc[0]
+        st.write(f"**Vehicle Found**: {vehicle['MODEL']} {vehicle['TRIM']} ({vehicle['YEAR']})")
+        
+        # Make selling price editable
+        default_msrp = float(vehicle["MSRP"].replace("$", ""))
+        selling_price = st.number_input("Selling Price ($)", min_value=0.0, value=default_msrp, step=100.0, key="selling_price")
+
+        st.write(f"**Model Number**: {vehicle['MODEL NUMBER']}")
+
+        # Find applicable lease programs
+        applicable_leases = lease_data[
+            (lease_data["Model_Year"] == vehicle["YEAR"]) &
+            (lease_data["Model_Number"].str.contains(vehicle["MODEL NUMBER"].split("F")[0])) &
+            (lease_data["Trim"].str.lower() == vehicle["TRIM"].split()[0].lower())
+        ]
+
+        if applicable_leases.empty:
+            st.warning("No lease programs found for this vehicle. Using default assumptions.")
+            applicable_leases = pd.DataFrame({
+                "Lease_Term": [36, 39],
+                "Tier": credit_tiers,
+                "Lease_Cash": ["$0", "$0"],
+                "Residual_Value": ["$0.0025", "$0.0025"]
+            })
+
+        # User inputs for lease calculation
+        st.write("#### Lease Options")
+        credit_tier = st.selectbox("Customer Credit Tier", credit_tiers)
+        down_payment = st.number_input("Down Payment ($)", min_value=0.0, value=0.0, step=100.0)
+        county = st.selectbox("Ohio County", counties)
+        tax_rate = tax_rates.get(county, 0.0725)  # Default to 7.25% if county not found
+
+        apply_markup = st.toggle("Apply 0.0004 Money Factor Markup", value=True)
+        global apply_lease_cash
+        apply_lease_cash = st.toggle("Include Lease Cash", value=False)
+
+        # Calculate lease payments for all terms and applicable tiers
+        lease_results = []
+        for _, lease in applicable_leases.iterrows():
+            lease_cash_str = lease["Lease_Cash"].replace("$", "")
+            lease_cash = float(lease_cash_str) if lease_cash_str else 0
+            result = calculate_lease_payment(
+                selling_price=selling_price,
+                lease_cash=lease_cash,
+                residual_value_range=lease["Residual_Value"],
+                lease_term=lease["Lease_Term"],
+                credit_tier=credit_tier,
+                down_payment=down_payment,
+                tax_rate=tax_rate,
+                apply_markup=apply_markup
+            )
+            lease_results.append(result)
+
+        # Display results
+        if lease_results:
+            st.write("#### Lease Payment Options")
+            lease_df = pd.DataFrame(lease_results)
+            st.dataframe(lease_df)
+        else:
+            st.error("No lease options available. Check lease program data.")
+
+# Existing inventory display section
+st.write("### Inventory Data")
 model_filter = st.sidebar.selectbox("Select Model", ["All"] + sorted(inventory_data["MODEL"].unique().tolist()))
 year_filter = st.sidebar.selectbox("Select Year", ["All"] + sorted(inventory_data["YEAR"].unique().tolist()))
 
-# Apply filters to inventory
 filtered_inventory = inventory_data.copy()
 if model_filter != "All":
     filtered_inventory = filtered_inventory[filtered_inventory["MODEL"] == model_filter]
 if year_filter != "All":
     filtered_inventory = filtered_inventory[filtered_inventory["YEAR"] == year_filter]
 
-# Display inventory data
-st.write("### Inventory Data")
 st.dataframe(filtered_inventory)
 
-# Display inventory summary
+# Summary with editable selling price
 st.write("### Inventory Summary")
-st.write(f"Total Vehicles: {len(filtered_inventory)}")
+total_vehicles = len(filtered_inventory)
+st.write(f"Total Vehicles: {total_vehicles}")
+
+if not filtered_inventory.empty:
+    st.write("#### Adjust Selling Price for Summary")
+    for idx, row in filtered_inventory.iterrows():
+        default_msrp = float(row["MSRP"].replace("$", ""))
+        new_price = st.number_input(
+            f"Selling Price for {row['VIN']} ({row['MODEL']} {row['TRIM']})",
+            min_value=0.0,
+            value=default_msrp,
+            step=100.0,
+            key=f"summary_price_{row['VIN']}"
+        )
+        filtered_inventory.at[idx, "MSRP"] = f"${new_price}"
+
+    st.write("#### Updated Inventory Summary")
+    st.dataframe(filtered_inventory)
 
 # Display lease programs if available
 if not lease_data.empty:
