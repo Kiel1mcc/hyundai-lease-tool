@@ -1,23 +1,21 @@
-name: Update Lease Programs and Inventory
+name: Update Inventory CSV
 
 on:
   push:
     paths:
-      - 'new_lease_programs.pdf'
       - 'Inventory_Detail_20250527.xlsx'
-
-permissions:
-  contents: write  # ✅ Needed so GitHub Actions can commit/push changes
+      - 'update_inventory.py'
+      - '.github/workflows/update_data.yml'
 
 jobs:
-  update-data:
+  update-inventory:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
       with:
-        fetch-depth: 0  # full history needed for committing files
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -27,34 +25,15 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install pandas openpyxl
 
-    - name: Install Java (required for tabula-py)
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y openjdk-11-jre
-
-    - name: Convert PDF to Lease CSV
-      run: python convert_pdf_to_csv.py
-
-    - name: Update Inventory
+    - name: Run Inventory Update
       run: python update_inventory.py
 
-    - name: Display CSV Outputs (for debug)
-      run: |
-        echo "------ Combined_Lease_Programs.csv ------"
-        head -n 20 Combined_Lease_Programs.csv || echo "File not found"
-        echo "------ Drivepath_Dealer_Inventory.csv ------"
-        head -n 20 Drivepath_Dealer_Inventory.csv || echo "File not found"
-
-    - name: Commit updated CSVs
+    - name: Commit updated CSV
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add Combined_Lease_Programs.csv Drivepath_Dealer_Inventory.csv
-        git commit -m "Update lease programs and inventory CSVs" || echo "No changes to commit"
+        git add Drivepath_Dealer_Inventory.csv
+        git commit -m "Updated dealer inventory CSV" || echo "No changes to commit"
         git push
-
-    - name: Clean up raw uploads
-      run: |
-        rm -f new_lease_programs.pdf Inventory_Detail_20250527.xlsx
