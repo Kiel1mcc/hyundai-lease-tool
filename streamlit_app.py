@@ -5,7 +5,7 @@ import pandas as pd
 @st.cache_data
 def load_data():
     dealer_stock = pd.read_csv("Drivepath_Dealer_Inventory.csv")
-    table_17 = pd.read_csv("Table_17.csv")
+    table_17 = pd.read_csv("Combined_Lease_Programs.csv")
     return dealer_stock, table_17
 
 dealer_stock, df_table = load_data()
