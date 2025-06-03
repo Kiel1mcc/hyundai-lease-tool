@@ -5,8 +5,9 @@ on:
     paths:
       - 'new_lease_programs.pdf'
       - 'Inventory_Detail_20250527.xlsx'
-      - 'convert_pdf_to_csv.py'
-      - 'update_inventory.py'
+
+permissions:
+  contents: write  # ✅ Needed so GitHub Actions can commit/push changes
 
 jobs:
   update-data:
@@ -15,6 +16,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # full history needed for committing files
 
     - name: Set up Python
       uses: actions/setup-python@v4
