@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 
+
 def update_inventory(excel_path, output_csv_path):
     # Check if the Excel file exists
     if not os.path.exists(excel_path):
@@ -30,5 +31,9 @@ def update_inventory(excel_path, output_csv_path):
     df.to_csv(output_csv_path, index=False)
     print(f"✅ Inventory updated and saved as {output_csv_path}")
 
+
 if __name__ == "__main__":
-    update_inventory("Inventory_Detail_20250527.xlsx", "Drivepath_Dealer_Inventory.csv")
+    update_inventory(
+        "Inventory_Detail_20250527.xlsx",
+        "Drivepath_Dealer_Inventory.csv",
+    )
