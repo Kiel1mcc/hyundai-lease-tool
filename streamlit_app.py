@@ -149,7 +149,12 @@ if vin_input and county != "Select County":
         # Inventory CSV stores the model code in the `MODEL` column
         st.write(f"**Model Number**: {vehicle['MODEL']}")
 
+
+        credit_tier = st.selectbox("Customer Credit Tier", credit_tiers)
+
+        # Find applicable lease programs for the selected tier
         # Find applicable lease programs
+
         model_year_match = lease_data["Model_Year"] == vehicle["YEAR"]
         model_number_match = lease_data["Model_Number"].str.contains(
             vehicle["MODEL"].split("F")[0]
@@ -157,21 +162,30 @@ if vin_input and county != "Select County":
         trim_match = (
             lease_data["Trim"].str.lower() == vehicle["TRIM"].split()[0].lower()
         )
+
+        tier_match = lease_data["Tier"] == credit_tier
+        applicable_leases = lease_data[
+            model_year_match & model_number_match & trim_match & tier_match
+        ]
         applicable_leases = lease_data[model_year_match & model_number_match & trim_match]
 
+
         if applicable_leases.empty:
-            st.warning("No lease programs found for this vehicle. Using default assumptions.")
-            default_tier = credit_tiers[0] if credit_tiers else "1 (740-999)"
-            applicable_leases = pd.DataFrame({
-                "Lease_Term": [36, 39],
-                "Tier": [default_tier, default_tier],
-                "Lease_Cash": ["$0", "$0"],
-                "Residual_Value": ["$0.0025", "$0.0025"]
-            })
+            st.warning(
+                "No lease programs found for this vehicle. Using default assumptions."
+            )
+            applicable_leases = pd.DataFrame(
+                {
+                    "Lease_Term": [36, 39],
+                    "Tier": [credit_tier, credit_tier],
+                    "Lease_Cash": ["$0", "$0"],
+                    "Residual_Value": ["$0.0025", "$0.0025"],
+                    "Residual_Percentage": [0.55, 0.52],
+                }
+            )
 
         # User inputs for lease calculation
         st.write("#### Lease Options")
-        credit_tier = st.selectbox("Customer Credit Tier", credit_tiers)
         down_payment = st.number_input("Down Payment ($)", min_value=0.0, value=0.0, step=100.0)
         tax_rate = tax_rates.get(county, 0.0725)  # Default to 7.25% if county not found
 
