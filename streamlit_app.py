@@ -91,7 +91,7 @@ if tax_data.empty:
     st.stop()
 
 # Verify required columns in inventory_data
-required_inventory_cols = ["VIN", "MODEL", "TRIM", "MSRP", "MODEL NUMBER", "YEAR"]
+required_inventory_cols = ["VIN", "MODEL", "TRIM", "MSRP", "YEAR"]
 if not all(col in inventory_data.columns for col in required_inventory_cols):
     st.error("Inventory data is missing required columns: " + ", ".join([col for col in required_inventory_cols if col not in inventory_data.columns]))
     st.stop()
