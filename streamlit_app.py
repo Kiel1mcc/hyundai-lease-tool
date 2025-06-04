@@ -169,6 +169,7 @@ if vin_input and county != "Select County":
             result = calculate_lease_payment(
                 selling_price=selling_price,
                 lease_cash=lease_cash,
+                residual_percentage=float(lease["Residual_Percentage"]),
                 residual_value_range=lease["Residual_Value"],
                 lease_term=lease["Lease_Term"],
                 credit_tier=credit_tier,
