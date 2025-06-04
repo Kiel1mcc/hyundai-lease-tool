@@ -149,9 +149,12 @@ if vin_input and county != "Select County":
         # Inventory CSV stores the model code in the `MODEL` column
         st.write(f"**Model Number**: {vehicle['MODEL']}")
 
+
         credit_tier = st.selectbox("Customer Credit Tier", credit_tiers)
 
         # Find applicable lease programs for the selected tier
+        # Find applicable lease programs
+
         model_year_match = lease_data["Model_Year"] == vehicle["YEAR"]
         model_number_match = lease_data["Model_Number"].str.contains(
             vehicle["MODEL"].split("F")[0]
@@ -159,10 +162,13 @@ if vin_input and county != "Select County":
         trim_match = (
             lease_data["Trim"].str.lower() == vehicle["TRIM"].split()[0].lower()
         )
+
         tier_match = lease_data["Tier"] == credit_tier
         applicable_leases = lease_data[
             model_year_match & model_number_match & trim_match & tier_match
         ]
+        applicable_leases = lease_data[model_year_match & model_number_match & trim_match]
+
 
         if applicable_leases.empty:
             st.warning(
