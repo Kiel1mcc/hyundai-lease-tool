@@ -104,15 +104,17 @@ else:
     st.warning("Lease programs not found. Using default credit tiers.")
 
 # Extract Ohio counties and tax rates
-counties = tax_data["County"].tolist()
+# County list with placeholder for selection
+counties = ["Select County"] + tax_data["County"].tolist()
 # The CSV uses a space in the column name, so access it directly
 tax_rates = dict(zip(tax_data["County"], tax_data["Tax Rate"].astype(float) / 100))
 
 # Section for lease calculation
 st.write("### Calculate Lease Payment")
 vin_input = st.text_input("Enter VIN", placeholder="e.g., 3KMJCCDE7SE006095")
+county = st.selectbox("Ohio County", counties)
 
-if vin_input:
+if vin_input and county != "Select County":
     # Find the vehicle in inventory
     vehicle = inventory_data[inventory_data["VIN"] == vin_input]
     if vehicle.empty:
@@ -153,7 +155,6 @@ if vin_input:
         st.write("#### Lease Options")
         credit_tier = st.selectbox("Customer Credit Tier", credit_tiers)
         down_payment = st.number_input("Down Payment ($)", min_value=0.0, value=0.0, step=100.0)
-        county = st.selectbox("Ohio County", counties)
         tax_rate = tax_rates.get(county, 0.0725)  # Default to 7.25% if county not found
 
         apply_markup = st.toggle("Apply 0.0004 Money Factor Markup", value=True)
@@ -184,6 +185,8 @@ if vin_input:
             st.dataframe(lease_df)
         else:
             st.error("No lease options available. Check lease program data.")
+else:
+    st.info("Enter a VIN and select a county to view lease options.")
 
 # Existing inventory display section
 st.write("### Inventory Data")
@@ -196,7 +199,7 @@ if model_filter != "All":
 if year_filter != "All":
     filtered_inventory = filtered_inventory[filtered_inventory["YEAR"] == year_filter]
 
-st.dataframe(filtered_inventory)
+# st.dataframe(filtered_inventory)
 
 # Summary with editable selling price
 st.write("### Inventory Summary")
@@ -217,12 +220,12 @@ if not filtered_inventory.empty:
         filtered_inventory.at[idx, "MSRP"] = f"${new_price}"
 
     st.write("#### Updated Inventory Summary")
-    st.dataframe(filtered_inventory)
+    # st.dataframe(filtered_inventory)
 
 # Display lease programs if available
 if not lease_data.empty:
     st.write("### Lease Programs (Optional)")
-    st.dataframe(lease_data)
+    # st.dataframe(lease_data)
     st.write(f"Total Lease Programs: {len(lease_data)}")
 else:
     st.write("Lease programs data not found. Upload Combined_Lease_Programs.csv to view lease details.")
