@@ -29,12 +29,17 @@ def calculate_lease_payment(
     apply_lease_cash=True,
 ):
     # Parse residual value (money factor) range
-    if residual_value_range and isinstance(residual_value_range, str):
-        if "-" in residual_value_range:
-            low, high = map(float, residual_value_range.replace("$", "").split("-"))
-            money_factor = (low + high) / 2
+    if residual_value_range:
+        if isinstance(residual_value_range, str):
+            if "-" in residual_value_range:
+                low, high = map(
+                    float, residual_value_range.replace("$", "").split("-")
+                )
+                money_factor = (low + high) / 2
+            else:
+                money_factor = float(residual_value_range.replace("$", ""))
         else:
-            money_factor = float(residual_value_range.replace("$", ""))
+            money_factor = float(residual_value_range)
     else:
         money_factor = 0.0025  # Default if not provided
 
@@ -150,7 +155,7 @@ if vin_input and county != "Select County":
         st.write(f"**Model Number**: {vehicle['MODEL']}")
 
 
-        credit_tier = st.selectbox("Customer Credit Tier", credit_tiers)
+                    "Residual_Value": [0.0025, 0.0025],
 
         # Find applicable lease programs for the selected tier
 
