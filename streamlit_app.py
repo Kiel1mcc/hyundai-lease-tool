@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 
+
 # Function to load CSV files with error handling
 @st.cache_data
 def load_data(file_path):
@@ -11,7 +12,22 @@ def load_data(file_path):
     return pd.read_csv(file_path)
 
 # Lease payment calculation function
-def calculate_lease_payment(selling_price, lease_cash, residual_percentage, residual_value_range, lease_term, credit_tier, down_payment, tax_rate, acquisition_fee=650, money_factor_markup=0.0004, apply_markup=True, apply_lease_cash=True):
+
+
+def calculate_lease_payment(
+    selling_price,
+    lease_cash,
+    residual_percentage,
+    residual_value_range,
+    lease_term,
+    credit_tier,
+    down_payment,
+    tax_rate,
+    acquisition_fee=650,
+    money_factor_markup=0.0004,
+    apply_markup=True,
+    apply_lease_cash=True,
+):
     # Parse residual value (money factor) range
     if residual_value_range and isinstance(residual_value_range, str):
         if "-" in residual_value_range:
@@ -71,6 +87,7 @@ def calculate_lease_payment(selling_price, lease_cash, residual_percentage, resi
         "Due at Signing": round(due_at_signing, 2),
         "Available Lease Cash": f"${lease_cash}" if lease_cash > 0 else "None"
     }
+
 
 # Title of the app
 st.title("Hyundai Dealer Inventory and Lease Tool")
@@ -133,15 +150,14 @@ if vin_input and county != "Select County":
         st.write(f"**Model Number**: {vehicle['MODEL']}")
 
         # Find applicable lease programs
-        applicable_leases = lease_data[
-            (lease_data["Model_Year"] == vehicle["YEAR"]) &
-            (
-                lease_data["Model_Number"].str.contains(
-                    vehicle["MODEL"].split("F")[0]
-                )
-            ) &
-            (lease_data["Trim"].str.lower() == vehicle["TRIM"].split()[0].lower())
-        ]
+        model_year_match = lease_data["Model_Year"] == vehicle["YEAR"]
+        model_number_match = lease_data["Model_Number"].str.contains(
+            vehicle["MODEL"].split("F")[0]
+        )
+        trim_match = (
+            lease_data["Trim"].str.lower() == vehicle["TRIM"].split()[0].lower()
+        )
+        applicable_leases = lease_data[model_year_match & model_number_match & trim_match]
 
         if applicable_leases.empty:
             st.warning("No lease programs found for this vehicle. Using default assumptions.")
