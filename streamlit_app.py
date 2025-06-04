@@ -153,6 +153,10 @@ if vin_input and county != "Select County":
         credit_tier = st.selectbox("Customer Credit Tier", credit_tiers)
 
         # Find applicable lease programs for the selected tier
+
+        credit_tier = st.selectbox("Customer Credit Tier", credit_tiers)
+
+        # Find applicable lease programs for the selected tier
         # Find applicable lease programs
 
         model_year_match = lease_data["Model_Year"] == vehicle["YEAR"]
@@ -162,6 +166,7 @@ if vin_input and county != "Select County":
         trim_match = (
             lease_data["Trim"].str.lower() == vehicle["TRIM"].split()[0].lower()
         )
+
 
         tier_match = lease_data["Tier"] == credit_tier
         applicable_leases = lease_data[
