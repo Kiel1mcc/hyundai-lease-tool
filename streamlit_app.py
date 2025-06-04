@@ -11,7 +11,7 @@ def load_data(file_path):
     return pd.read_csv(file_path)
 
 # Lease payment calculation function
-def calculate_lease_payment(selling_price, lease_cash, residual_percentage, residual_value_range, lease_term, credit_tier, down_payment, tax_rate, acquisition_fee=650, money_factor_markup=0.0004, apply_markup=True):
+def calculate_lease_payment(selling_price, lease_cash, residual_percentage, residual_value_range, lease_term, credit_tier, down_payment, tax_rate, acquisition_fee=650, money_factor_markup=0.0004, apply_markup=True, apply_lease_cash=True):
     # Parse residual value (money factor) range
     if residual_value_range and isinstance(residual_value_range, str):
         if "-" in residual_value_range:
@@ -42,8 +42,10 @@ def calculate_lease_payment(selling_price, lease_cash, residual_percentage, resi
         else:
             residual_value = selling_price * 0.50  # Generic fallback
 
-    # Apply lease cash (rebate) if selected
-    capitalized_cost = selling_price - lease_cash - down_payment
+    # Calculate capitalized cost applying lease cash only if selected
+    capitalized_cost = selling_price - down_payment
+    if apply_lease_cash:
+        capitalized_cost -= lease_cash
 
     # Calculate depreciation
     depreciation = (capitalized_cost - residual_value) / lease_term
@@ -158,8 +160,11 @@ if vin_input and county != "Select County":
         tax_rate = tax_rates.get(county, 0.0725)  # Default to 7.25% if county not found
 
         apply_markup = st.toggle("Apply 0.0004 Money Factor Markup", value=True)
-        global apply_lease_cash
-        apply_lease_cash = st.toggle("Include Lease Cash", value=False)
+        apply_lease_cash = st.toggle(
+            "Apply Lease Cash Discount",
+            value=False,
+            help="If enabled, subtract available lease cash from the selling price"
+        )
 
         # Calculate lease payments for all terms and applicable tiers
         lease_results = []
@@ -175,7 +180,8 @@ if vin_input and county != "Select County":
                 credit_tier=credit_tier,
                 down_payment=down_payment,
                 tax_rate=tax_rate,
-                apply_markup=apply_markup
+                apply_markup=apply_markup,
+                apply_lease_cash=apply_lease_cash
             )
             lease_results.append(result)
 
