@@ -11,14 +11,27 @@ def load_data(file_path):
     return pd.read_csv(file_path)
 
 # Lease payment calculation function
-def calculate_lease_payment(selling_price, lease_cash, residual_value_range, lease_term, credit_tier, down_payment, tax_rate, acquisition_fee=650, money_factor_markup=0.0004, apply_markup=True):
-    # Parse residual value (money factor) range
-    if residual_value_range and isinstance(residual_value_range, str):
-        if "-" in residual_value_range:
-            low, high = map(float, residual_value_range.replace("$", "").split("-"))
+def calculate_lease_payment(
+    selling_price,
+    lease_cash,
+    money_factor_range,
+    residual_percentage,
+    lease_term,
+    credit_tier,
+    down_payment,
+    tax_rate,
+    acquisition_fee=650,
+    money_factor_markup=0.0004,
+    apply_markup=True,
+    apply_lease_cash=False,
+):
+    # Parse money factor range or value
+    if money_factor_range and isinstance(money_factor_range, str):
+        if "-" in money_factor_range:
+            low, high = map(float, money_factor_range.replace("$", "").split("-"))
             money_factor = (low + high) / 2
         else:
-            money_factor = float(residual_value_range.replace("$", ""))
+            money_factor = float(money_factor_range.replace("$", ""))
     else:
         money_factor = 0.0025  # Default if not provided
 
@@ -26,9 +39,16 @@ def calculate_lease_payment(selling_price, lease_cash, residual_value_range, lea
     if apply_markup:
         money_factor += money_factor_markup
 
-    # Assume residual percentage (since Combined_Lease_Programs.csv provides money factor instead)
-    residual_percentage = 0.55 if lease_term == 36 else 0.52
-    residual_value = selling_price * residual_percentage
+    # Use provided residual percentage or default based on lease term
+    try:
+        rp = float(str(residual_percentage).replace("%", "")) if residual_percentage else None
+    except ValueError:
+        rp = None
+    if rp is None:
+        rp = 0.55 if lease_term == 36 else 0.52
+    elif rp > 1:
+        rp /= 100
+    residual_value = selling_price * rp
 
     # Apply lease cash (rebate) if selected
     capitalized_cost = selling_price - (lease_cash if apply_lease_cash else 0) - down_payment
@@ -132,7 +152,6 @@ if vin_input:
         tax_rate = tax_rates.get(county, 0.0725)  # Default to 7.25% if county not found
 
         apply_markup = st.toggle("Apply 0.0004 Money Factor Markup", value=True)
-        global apply_lease_cash
         apply_lease_cash = st.toggle("Include Lease Cash", value=False)
 
         # Calculate lease payments for all terms and applicable tiers
@@ -143,12 +162,14 @@ if vin_input:
             result = calculate_lease_payment(
                 selling_price=selling_price,
                 lease_cash=lease_cash,
-                residual_value_range=lease["Residual_Value"],
+                money_factor_range=lease["Residual_Value"],
+                residual_percentage=lease.get("Residual_Percentage"),
                 lease_term=lease["Lease_Term"],
                 credit_tier=credit_tier,
                 down_payment=down_payment,
                 tax_rate=tax_rate,
-                apply_markup=apply_markup
+                apply_markup=apply_markup,
+                apply_lease_cash=apply_lease_cash,
             )
             lease_results.append(result)
 
