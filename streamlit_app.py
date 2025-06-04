@@ -87,7 +87,8 @@ else:
 
 # Extract Ohio counties and tax rates
 counties = tax_data["County"].tolist()
-tax_rates = dict(zip(tax_data["County"], tax_data["Tax_Rate"].astype(float) / 100))
+# The CSV uses a space in the column name, so access it directly
+tax_rates = dict(zip(tax_data["County"], tax_data["Tax Rate"].astype(float) / 100))
 
 # Section for lease calculation
 st.write("### Calculate Lease Payment")
@@ -106,12 +107,17 @@ if vin_input:
         default_msrp = float(vehicle["MSRP"].replace("$", ""))
         selling_price = st.number_input("Selling Price ($)", min_value=0.0, value=default_msrp, step=100.0, key="selling_price")
 
-        st.write(f"**Model Number**: {vehicle['MODEL NUMBER']}")
+        # Inventory CSV stores the model code in the `MODEL` column
+        st.write(f"**Model Number**: {vehicle['MODEL']}")
 
         # Find applicable lease programs
         applicable_leases = lease_data[
             (lease_data["Model_Year"] == vehicle["YEAR"]) &
-            (lease_data["Model_Number"].str.contains(vehicle["MODEL NUMBER"].split("F")[0])) &
+            (
+                lease_data["Model_Number"].str.contains(
+                    vehicle["MODEL"].split("F")[0]
+                )
+            ) &
             (lease_data["Trim"].str.lower() == vehicle["TRIM"].split()[0].lower())
         ]
 
