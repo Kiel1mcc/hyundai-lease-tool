@@ -195,44 +195,44 @@ if vin_input and county != "Select County":
 else:
     st.info("Enter a VIN and select a county to view lease options.")
 
-# Existing inventory display section
-st.write("### Inventory Data")
-model_filter = st.sidebar.selectbox("Select Model", ["All"] + sorted(inventory_data["MODEL"].unique().tolist()))
-year_filter = st.sidebar.selectbox("Select Year", ["All"] + sorted(inventory_data["YEAR"].unique().tolist()))
+# Existing inventory display section commented out for streamlined view
+# st.write("### Inventory Data")
+# model_filter = st.sidebar.selectbox("Select Model", ["All"] + sorted(inventory_data["MODEL"].unique().tolist()))
+# year_filter = st.sidebar.selectbox("Select Year", ["All"] + sorted(inventory_data["YEAR"].unique().tolist()))
 
-filtered_inventory = inventory_data.copy()
-if model_filter != "All":
-    filtered_inventory = filtered_inventory[filtered_inventory["MODEL"] == model_filter]
-if year_filter != "All":
-    filtered_inventory = filtered_inventory[filtered_inventory["YEAR"] == year_filter]
+# filtered_inventory = inventory_data.copy()
+# if model_filter != "All":
+#     filtered_inventory = filtered_inventory[filtered_inventory["MODEL"] == model_filter]
+# if year_filter != "All":
+#     filtered_inventory = filtered_inventory[filtered_inventory["YEAR"] == year_filter]
 
 # st.dataframe(filtered_inventory)
 
 # Summary with editable selling price
-st.write("### Inventory Summary")
-total_vehicles = len(filtered_inventory)
-st.write(f"Total Vehicles: {total_vehicles}")
+# st.write("### Inventory Summary")
+# total_vehicles = len(filtered_inventory)
+# st.write(f"Total Vehicles: {total_vehicles}")
 
-if not filtered_inventory.empty:
-    st.write("#### Adjust Selling Price for Summary")
-    for idx, row in filtered_inventory.iterrows():
-        default_msrp = float(row["MSRP"].replace("$", ""))
-        new_price = st.number_input(
-            f"Selling Price for {row['VIN']} ({row['MODEL']} {row['TRIM']})",
-            min_value=0.0,
-            value=default_msrp,
-            step=100.0,
-            key=f"summary_price_{row['VIN']}"
-        )
-        filtered_inventory.at[idx, "MSRP"] = f"${new_price}"
+# if not filtered_inventory.empty:
+#     st.write("#### Adjust Selling Price for Summary")
+#     for idx, row in filtered_inventory.iterrows():
+#         default_msrp = float(row["MSRP"].replace("$", ""))
+#         new_price = st.number_input(
+#             f"Selling Price for {row['VIN']} ({row['MODEL']} {row['TRIM']})",
+#             min_value=0.0,
+#             value=default_msrp,
+#             step=100.0,
+#             key=f"summary_price_{row['VIN']}"
+#         )
+#         filtered_inventory.at[idx, "MSRP"] = f"${new_price}"
 
-    st.write("#### Updated Inventory Summary")
-    # st.dataframe(filtered_inventory)
+#     st.write("#### Updated Inventory Summary")
+#     # st.dataframe(filtered_inventory)
 
 # Display lease programs if available
-if not lease_data.empty:
-    st.write("### Lease Programs (Optional)")
-    # st.dataframe(lease_data)
-    st.write(f"Total Lease Programs: {len(lease_data)}")
-else:
-    st.write("Lease programs data not found. Upload Combined_Lease_Programs.csv to view lease details.")
+# if not lease_data.empty:
+#     st.write("### Lease Programs (Optional)")
+#     # st.dataframe(lease_data)
+#     st.write(f"Total Lease Programs: {len(lease_data)}")
+# else:
+#     st.write("Lease programs data not found. Upload Combined_Lease_Programs.csv to view lease details.")
