@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import re
 
 # Function to load CSV files with error handling
 @st.cache_data
@@ -26,11 +27,12 @@ def calculate_lease_payment(
     apply_lease_cash=True,
 ):
     if residual_value_range and isinstance(residual_value_range, str):
+        cleaned = re.sub(r"[^0-9.-]", "", residual_value_range)
         if "-" in residual_value_range:
-            low, high = map(float, residual_value_range.replace("$", "").split("-"))
-            money_factor = (low + high) / 2
+            parts = [float(p) for p in cleaned.split("-")]
+            money_factor = sum(parts) / 2
         else:
-            money_factor = float(residual_value_range)
+            money_factor = float(cleaned)
     else:
         money_factor = 0.0025
 
@@ -38,7 +40,8 @@ def calculate_lease_payment(
         money_factor += money_factor_markup
 
     if residual_percentage:
-        residual_value = selling_price * float(residual_percentage)
+        rpct = float(residual_percentage)
+        residual_value = selling_price * (rpct / 100 if rpct > 1 else rpct)
     else:
         if lease_term == 24:
             residual_value = selling_price * 0.60
@@ -89,7 +92,7 @@ if not all(col in inventory_data.columns for col in required_inventory_cols):
     st.error("Inventory data is missing required columns: " + ", ".join([col for col in required_inventory_cols if col not in inventory_data.columns]))
     st.stop()
 
-credit_tiers = sorted(lease_data["Tier"].dropna().unique().tolist()) if not lease_data.empty else ["1 (740-999)", "2 (730-739)", "5 (660-679)"]
+credit_tiers = sorted(lease_data["Tier"].dropna().unique().tolist()) if not lease_data.empty else ["1", "2", "5"]
 
 counties = ["Select County"] + tax_data["County"].tolist()
 tax_rates = dict(zip(tax_data["County"], tax_data["Tax Rate"].astype(float) / 100))
@@ -105,11 +108,17 @@ if vin_input and county != "Select County":
     else:
         vehicle = vehicle.iloc[0]
         st.write(f"**Vehicle Found**: {vehicle['MODEL']} {vehicle['TRIM']} ({vehicle['YEAR']})")
-        default_msrp = float(vehicle["MSRP"].replace("$", ""))
+
+        try:
+            default_msrp = float(str(vehicle["MSRP"]).replace("$", ""))
+        except:
+            default_msrp = 0.0
+
         selling_price = st.number_input("Selling Price ($)", min_value=0.0, value=default_msrp, step=100.0)
         st.write(f"**Model Number**: {vehicle['MODEL']}")
 
-        credit_tier = st.selectbox("Customer Credit Tier", credit_tiers)
+        credit_tier_display = st.selectbox("Customer Credit Tier", credit_tiers)
+        credit_tier = credit_tier_display.split()[0]  # Get just the number
 
         model_year = int(vehicle["YEAR"])
         model_number = vehicle["MODEL"]
@@ -124,6 +133,7 @@ if vin_input and county != "Select County":
 
         if applicable_leases.empty:
             st.warning("No lease programs found for this vehicle. Using default assumptions.")
+            st.code(f"DEBUG INFO:\nYear: {model_year}, Model: {model_number}, Trim: {trim_snippet}, Tier: {credit_tier}")
             applicable_leases = pd.DataFrame({
                 "Lease_Term": [36, 39],
                 "Tier": [credit_tier, credit_tier],
