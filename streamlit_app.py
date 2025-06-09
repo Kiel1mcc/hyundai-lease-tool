@@ -132,18 +132,20 @@ if vin_input and county != "Select County":
 
         model_year = int(vehicle["YEAR"])
         model_number = vehicle["MODEL"]
-        trim_snippet = vehicle["TRIM"].lower().split()[0]
 
+        # Match lease programs by exact model number when available. This avoids
+        # failures when the inventory trim name doesn't appear in the lease data.
         applicable_leases = lease_data[
-            (lease_data["Model_Year"] == model_year) &
-            (lease_data["Model_Number"].str.startswith(model_number[:5])) &
-            (lease_data["Trim"].str.lower().str.contains(trim_snippet)) &
-            (lease_data["Tier"] == credit_tier)
+            (lease_data["Model_Year"] == model_year)
+            & (lease_data["Model_Number"] == model_number)
+            & (lease_data["Tier"].astype(str).str.startswith(credit_tier))
         ]
 
         if applicable_leases.empty:
             st.warning("No lease programs found for this vehicle. Using default assumptions.")
-            st.code(f"DEBUG INFO:\nYear: {model_year}, Model: {model_number}, Trim: {trim_snippet}, Tier: {credit_tier}")
+            st.code(
+                f"DEBUG INFO:\nYear: {model_year}, Model: {model_number}, Tier: {credit_tier}"
+            )
             applicable_leases = pd.DataFrame({
                 "Lease_Term": [36, 39],
                 "Tier": [credit_tier, credit_tier],
