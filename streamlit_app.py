@@ -105,7 +105,10 @@ counties = ["Select County"] + tax_data["County"].tolist()
 tax_rates = dict(zip(tax_data["County"], tax_data["Tax Rate"].astype(float)))
 
 st.write("### Calculate Lease Payment")
-vin_input = st.text_input("Enter VIN", placeholder="e.g., 3KMJCCDE7SE006095")
+vin_input = st.text_input(
+    "Enter VIN",
+    placeholder="e.g., 3KMJCCDE7SE006095",
+).strip().upper()
 county = st.selectbox("Ohio County", counties)
 
 if vin_input and county != "Select County":
