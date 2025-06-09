@@ -26,13 +26,18 @@ def calculate_lease_payment(
     apply_markup=True,
     apply_lease_cash=True,
 ):
-    if residual_value_range and isinstance(residual_value_range, str):
-        cleaned = re.sub(r"[^0-9.-]", "", residual_value_range)
-        if "-" in residual_value_range:
-            parts = [float(p) for p in cleaned.split("-")]
-            money_factor = sum(parts) / 2
+    # Residual value column actually stores the money factor. Values may
+    # come in as strings or floats, so handle both cases.
+    if residual_value_range is not None:
+        if isinstance(residual_value_range, str):
+            cleaned = re.sub(r"[^0-9.-]", "", residual_value_range)
+            if "-" in residual_value_range:
+                parts = [float(p) for p in cleaned.split("-") if p]
+                money_factor = sum(parts) / len(parts) if parts else 0.0025
+            else:
+                money_factor = float(cleaned) if cleaned else 0.0025
         else:
-            money_factor = float(cleaned)
+            money_factor = float(residual_value_range)
     else:
         money_factor = 0.0025
 
@@ -95,7 +100,9 @@ if not all(col in inventory_data.columns for col in required_inventory_cols):
 credit_tiers = sorted(lease_data["Tier"].dropna().unique().tolist()) if not lease_data.empty else ["1", "2", "5"]
 
 counties = ["Select County"] + tax_data["County"].tolist()
-tax_rates = dict(zip(tax_data["County"], tax_data["Tax Rate"].astype(float) / 100))
+# Tax rates are already stored as decimal values (e.g. 0.0725 for 7.25%),
+# so no additional scaling is required.
+tax_rates = dict(zip(tax_data["County"], tax_data["Tax Rate"].astype(float)))
 
 st.write("### Calculate Lease Payment")
 vin_input = st.text_input("Enter VIN", placeholder="e.g., 3KMJCCDE7SE006095")
