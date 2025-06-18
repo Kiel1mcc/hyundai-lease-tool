@@ -1,0 +1,28 @@
+body {
+    background-color: #f7f9fc;
+    font-family: 'Roboto', sans-serif;
+}
+
+h1, h2, h3 {
+    color: #014F86;
+    font-weight: 600;
+}
+
+.stButton>button {
+    background-color: #014F86;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.4rem 1rem;
+    font-weight: 600;
+}
+
+#MainMenu, footer {
+    visibility: hidden;
+}
+
+.stDataFrame {
+    background-color: #ffffff;
+    border: none;
+    border-radius: 6px;
+}
