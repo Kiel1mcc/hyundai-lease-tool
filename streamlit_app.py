@@ -59,9 +59,10 @@ def calculate_lease_payment(
         else:
             residual_value = selling_price * 0.50
 
-    capitalized_cost = selling_price - down_payment
-    if apply_lease_cash:
-        capitalized_cost -= lease_cash
+    # Treat lease cash as an additional down payment when selected so the
+    # customer's upfront amount stays the same while reducing monthly cost.
+    total_down = down_payment + (lease_cash if apply_lease_cash else 0)
+    capitalized_cost = selling_price - total_down
 
     depreciation = (capitalized_cost - residual_value) / lease_term
     finance_charge = (capitalized_cost + residual_value) * money_factor
@@ -158,8 +159,17 @@ if vin_input and county != "Select County":
         down_payment = st.number_input("Down Payment ($)", min_value=0.0, value=0.0, step=100.0)
         tax_rate = tax_rates.get(county, 0.0725)
 
-        apply_markup = st.toggle("Apply 0.0004 Money Factor Markup", value=True)
-        apply_lease_cash = st.toggle("Apply Lease Cash Discount", value=False)
+        with st.expander("Lease Options"):
+            apply_markup = st.toggle(
+                "Apply 0.0004 Money Factor Markup",
+                value=True,
+                key="apply_markup",
+            )
+            apply_lease_cash = st.toggle(
+                "Apply Lease Cash Discount",
+                value=False,
+                key="apply_lease_cash",
+            )
 
         lease_results = []
         for _, lease in applicable_leases.iterrows():
