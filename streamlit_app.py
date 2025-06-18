@@ -3,13 +3,44 @@ import pandas as pd
 import os
 import re
 
+st.set_page_config(
+    page_title="Hyundai Dealer Inventory & Lease Tool",
+    page_icon="🚗",
+    layout="wide",
+)
+
+
+def load_local_css(path: str):
+    if os.path.exists(path):
+        with open(path) as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+
+load_local_css("styles/style.css")
+
+st.markdown(
+    "<h1 style='text-align:center;'>Hyundai Dealer Inventory & Lease Tool</h1>",
+    unsafe_allow_html=True,
+)
+
+st.sidebar.header("Instructions")
+st.sidebar.markdown(
+    "1. Enter a VIN to locate the vehicle.\n"
+    "2. Select the Ohio county to apply local tax rates.\n"
+    "3. Adjust pricing and options to estimate lease payments."
+)
+
+
 # Function to load CSV files with error handling
 @st.cache_data
 def load_data(file_path):
     if not os.path.exists(file_path):
-        st.error(f"{file_path} not found in the app directory. Please upload it or check the path.")
+        st.error(
+            f"{file_path} not found in the app directory. Please upload it or check the path."
+        )
         return pd.DataFrame()
     return pd.read_csv(file_path)
+
 
 # Lease payment calculation function
 def calculate_lease_payment(
@@ -69,7 +100,12 @@ def calculate_lease_payment(
     monthly_payment = depreciation + finance_charge
     monthly_tax = monthly_payment * tax_rate
     monthly_payment_with_tax = monthly_payment + monthly_tax
-    due_at_signing = monthly_payment_with_tax + acquisition_fee + down_payment + (down_payment * tax_rate)
+    due_at_signing = (
+        monthly_payment_with_tax
+        + acquisition_fee
+        + down_payment
+        + (down_payment * tax_rate)
+    )
 
     return {
         "Lease Term (Months)": lease_term,
@@ -77,8 +113,9 @@ def calculate_lease_payment(
         "Money Factor": round(money_factor, 5),
         "Monthly Payment": round(monthly_payment_with_tax, 2),
         "Due at Signing": round(due_at_signing, 2),
-        "Available Lease Cash": f"${lease_cash}" if lease_cash > 0 else "None"
+        "Available Lease Cash": f"${lease_cash}" if lease_cash > 0 else "None",
     }
+
 
 st.title("Hyundai Dealer Inventory and Lease Tool")
 
@@ -87,7 +124,9 @@ lease_data = load_data("Combined_Lease_Programs.csv")
 tax_data = load_data("ohio_county_tax.csv")
 
 if inventory_data.empty:
-    st.write("Inventory data is required to proceed. Please upload Drivepath_Dealer_Inventory.csv.")
+    st.write(
+        "Inventory data is required to proceed. Please upload Drivepath_Dealer_Inventory.csv."
+    )
     st.stop()
 if tax_data.empty:
     st.write("Ohio county tax data is required. Please upload ohio_county_tax.csv.")
@@ -95,10 +134,23 @@ if tax_data.empty:
 
 required_inventory_cols = ["VIN", "MODEL", "TRIM", "MSRP", "YEAR"]
 if not all(col in inventory_data.columns for col in required_inventory_cols):
-    st.error("Inventory data is missing required columns: " + ", ".join([col for col in required_inventory_cols if col not in inventory_data.columns]))
+    st.error(
+        "Inventory data is missing required columns: "
+        + ", ".join(
+            [
+                col
+                for col in required_inventory_cols
+                if col not in inventory_data.columns
+            ]
+        )
+    )
     st.stop()
 
-credit_tiers = sorted(lease_data["Tier"].dropna().unique().tolist()) if not lease_data.empty else ["1", "2", "5"]
+credit_tiers = (
+    sorted(lease_data["Tier"].dropna().unique().tolist())
+    if not lease_data.empty
+    else ["1", "2", "5"]
+)
 
 counties = ["Select County"] + tax_data["County"].tolist()
 # Tax rates are already stored as decimal values (e.g. 0.0725 for 7.25%),
@@ -106,11 +158,18 @@ counties = ["Select County"] + tax_data["County"].tolist()
 tax_rates = dict(zip(tax_data["County"], tax_data["Tax Rate"].astype(float)))
 
 st.write("### Calculate Lease Payment")
-vin_input = st.text_input(
-    "Enter VIN",
-    placeholder="e.g., 3KMJCCDE7SE006095",
-).strip().upper()
-county = st.selectbox("Ohio County", counties)
+col_vin, col_county = st.columns(2)
+with col_vin:
+    vin_input = (
+        st.text_input(
+            "Enter VIN",
+            placeholder="e.g., 3KMJCCDE7SE006095",
+        )
+        .strip()
+        .upper()
+    )
+with col_county:
+    county = st.selectbox("Ohio County", counties)
 
 if vin_input and county != "Select County":
     vehicle = inventory_data[inventory_data["VIN"] == vin_input]
@@ -118,14 +177,31 @@ if vin_input and county != "Select County":
         st.error("VIN not found in inventory. Please check the VIN and try again.")
     else:
         vehicle = vehicle.iloc[0]
-        st.write(f"**Vehicle Found**: {vehicle['MODEL']} {vehicle['TRIM']} ({vehicle['YEAR']})")
+        st.write(
+            f"**Vehicle Found**: {vehicle['MODEL']} {vehicle['TRIM']} ({vehicle['YEAR']})"
+        )
 
         try:
             default_msrp = float(str(vehicle["MSRP"]).replace("$", ""))
         except:
             default_msrp = 0.0
 
-        selling_price = st.number_input("Selling Price ($)", min_value=0.0, value=default_msrp, step=100.0)
+        price_col, down_col = st.columns(2)
+        with price_col:
+            selling_price = st.number_input(
+                "Selling Price ($)",
+                min_value=0.0,
+                value=default_msrp,
+                step=100.0,
+            )
+        with down_col:
+            down_payment = st.number_input(
+                "Down Payment ($)",
+                min_value=0.0,
+                value=0.0,
+                step=100.0,
+            )
+
         st.write(f"**Model Number**: {vehicle['MODEL']}")
 
         credit_tier_display = st.selectbox("Customer Credit Tier", credit_tiers)
@@ -143,20 +219,23 @@ if vin_input and county != "Select County":
         ]
 
         if applicable_leases.empty:
-            st.warning("No lease programs found for this vehicle. Using default assumptions.")
+            st.warning(
+                "No lease programs found for this vehicle. Using default assumptions."
+            )
             st.code(
                 f"DEBUG INFO:\nYear: {model_year}, Model: {model_number}, Tier: {credit_tier}"
             )
-            applicable_leases = pd.DataFrame({
-                "Lease_Term": [36, 39],
-                "Tier": [credit_tier, credit_tier],
-                "Lease_Cash": ["$0", "$0"],
-                "Residual_Value": ["0.0025", "0.0025"],
-                "Residual_Percentage": [0.55, 0.52],
-            })
+            applicable_leases = pd.DataFrame(
+                {
+                    "Lease_Term": [36, 39],
+                    "Tier": [credit_tier, credit_tier],
+                    "Lease_Cash": ["$0", "$0"],
+                    "Residual_Value": ["0.0025", "0.0025"],
+                    "Residual_Percentage": [0.55, 0.52],
+                }
+            )
 
         st.write("#### Lease Options")
-        down_payment = st.number_input("Down Payment ($)", min_value=0.0, value=0.0, step=100.0)
         tax_rate = tax_rates.get(county, 0.0725)
 
         with st.expander("Lease Options"):
@@ -187,7 +266,7 @@ if vin_input and county != "Select County":
                 down_payment=down_payment,
                 tax_rate=tax_rate,
                 apply_markup=apply_markup,
-                apply_lease_cash=apply_lease_cash
+                apply_lease_cash=apply_lease_cash,
             )
             lease_results.append(result)
 
