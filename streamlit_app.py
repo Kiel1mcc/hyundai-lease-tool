@@ -59,9 +59,10 @@ def calculate_lease_payment(
         else:
             residual_value = selling_price * 0.50
 
-    capitalized_cost = selling_price - down_payment
-    if apply_lease_cash:
-        capitalized_cost -= lease_cash
+    # Treat lease cash as an additional down payment when selected so the
+    # customer's upfront amount stays the same while reducing monthly cost.
+    total_down = down_payment + (lease_cash if apply_lease_cash else 0)
+    capitalized_cost = selling_price - total_down
 
     depreciation = (capitalized_cost - residual_value) / lease_term
     finance_charge = (capitalized_cost + residual_value) * money_factor
